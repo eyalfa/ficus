@@ -23,6 +23,16 @@ trait CollectionReaders {
     }
   }
 
+  implicit def traversableCanRead[C[_], A]( implicit canReadA : CanRead[A]) : CanRead[ C[A] ] =
+    new CanRead[C[A]] {
+      override def canRead(config: Config, path: String): Boolean = {
+        checkReadable( _.getList )(config, path) && {
+          val list = config.getList(path).asScala
+          list.forall( v => canReadA.canRead( v.atPath(DummyPathValue), DummyPathValue ) )
+        }
+      }
+    }
+
   implicit def mapValueReader[A](implicit entryReader: ValueReader[A]): ValueReader[Map[String, A]] = new ValueReader[Map[String, A]] {
     def read(config: Config, path: String): Map[String, A] = {
       val relativeConfig = config.getConfig(path)
@@ -32,6 +42,18 @@ trait CollectionReaders {
       } toMap
     }
   }
+
+  implicit def canReadMap[A](implicit canReadA : CanRead[A]) : CanRead[Map[String, A]] =
+    new CanRead[Map[String, A]]{
+      override def canRead(config: Config, path: String): Boolean = {
+        ConfigReader.configValueReader.canRead(config, path) && {
+          val relativeCfg = ConfigReader.configValueReader.read(config, path)
+          relativeCfg.root().keySet().asScala.forall{ k =>
+            canReadA.canRead(relativeCfg, k)
+          }
+        }
+      }
+    }
 
 }
 

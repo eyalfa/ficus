@@ -11,11 +11,13 @@ trait DurationReaders {
    * format as defined by the <a href="https://github.com/typesafehub/config/blob/master/HOCON.md">HOCON spec</a>.
    * For example, it can read "15 minutes" or "1 day".
    */
-  implicit def finiteDurationReader: ValueReader[FiniteDuration] = new ValueReader[FiniteDuration] {
+  implicit def finiteDurationReader: ExtendedValueReader[FiniteDuration] = new ExtendedValueReader[FiniteDuration] {
     def read(config: Config, path: String): FiniteDuration = {
       val nanos = config.getDuration(path, NANOSECONDS)
       Duration.fromNanos(nanos)
     }
+    private def getDuration( config : Config )( path : String ) = config.getDuration( path, NANOSECONDS)
+    override def canRead(config: Config, path: String): Boolean = checkReadable( getDuration )( config, path)
   }
 }
 
