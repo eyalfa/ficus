@@ -19,3 +19,7 @@ trait CanRead[A] {
 }
 
 trait ExtendedValueReader[A] extends ValueReader[A] with CanRead[A]
+
+object CanRead{
+  def apply[A : CanRead ] = implicitly[CanRead[A]]
+}

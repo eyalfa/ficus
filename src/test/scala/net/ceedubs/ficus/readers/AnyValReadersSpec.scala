@@ -1,11 +1,13 @@
 package net.ceedubs.ficus.readers
 
-import com.typesafe.config.ConfigFactory
+import com.typesafe.config._
 import net.ceedubs.ficus.Spec
 
 class AnyValReadersSpec extends Spec with AnyValReaders { def is = s2"""
   The Boolean value reader should
     read a boolean $readBoolean
+    canRead true ${canReadValidValues[Boolean](ConfigValueFactory.fromAnyRef(true) )}
+    canRead false ${canReadValidValues[Boolean](ConfigValueFactory.fromAnyRef(false))}
 
   The Int value reader should
     read an int $readInt
@@ -19,6 +21,17 @@ class AnyValReadersSpec extends Spec with AnyValReaders { def is = s2"""
     read a double $readDouble
     read an int as a double $readIntAsDouble
   """
+
+  def canReadValidValues[A : CanRead ]( cfgValue : ConfigValue ) = prop{ (depth1 : Int) =>
+    val depth = depth1 % 111
+    def path( tail : String*) : String = (List.fill(depth)("x") ++ tail).mkString(".")
+    val cfg = cfgValue.atPath(path("a"))
+    CanRead[A].canRead( cfg, path("a") ) must beTrue
+    CanRead[A].canRead( cfg, path("b") ) must beFalse
+    (!cfgValue.isInstanceOf[ConfigObject] || !cfgValue.asInstanceOf[ConfigObject].toConfig.hasPath(path("a", "a"))) ==> {
+      CanRead[A].canRead( cfg, path("a","a") ) must beFalse
+    }
+  }
 
   def readBoolean = prop { b: Boolean =>
     val cfg = ConfigFactory.parseString(s"myValue = $b")
